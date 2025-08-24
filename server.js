@@ -5,9 +5,9 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 제미나이 AI 설정
+// 제미나이 AI 설정 (비용 효율적인 flash 모델로 변경)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
 // 미들웨어 설정
 app.use(express.json());
