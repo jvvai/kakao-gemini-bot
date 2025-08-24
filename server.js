@@ -53,14 +53,14 @@ app.get('/', (req, res) => {
 // 카카오톡 웹훅 엔드포인트
 app.post('/webhook', async (req, res) => {
   try {
-    const userMessage = req.body.userRequest.utterance;
+    console.log('웹훅 요청 받음:', JSON.stringify(req.body, null, 2));
     
-    // 'q ' 제거하고 실제 질문만 추출
-    const question = userMessage.replace(/^q\s*/i, '');
+    // 카카오톡에서 오는 사용자 메시지 추출
+    const userMessage = req.body.userRequest?.utterance || '';
     
-    console.log('사용자 질문:', question);
+    console.log('사용자 메시지:', userMessage);
     
-    if (!question.trim()) {
+    if (!userMessage.trim()) {
       return res.json({
         version: "2.0",
         template: {
@@ -73,19 +73,45 @@ app.post('/webhook', async (req, res) => {
       });
     }
     
+    // 'q ' 제거하고 실제 질문만 추출
+    let question = userMessage;
+    if (userMessage.toLowerCase().startsWith('q ')) {
+      question = userMessage.substring(2).trim();
+    }
+    
+    console.log('처리할 질문:', question);
+    
+    if (!question.trim()) {
+      return res.json({
+        version: "2.0",
+        template: {
+          outputs: [{
+            simpleText: {
+              text: "흠~ 큐디에게 뭘 물어보고 싶은 거야? 'q 질문내용' 형태로 물어봐! 🐲✨"
+            }
+          }]
+        }
+      });
+    }
+    
     // 큐디 성격을 위한 프롬프트
-    const dragonPrompt = `너는 큐디라는 이름의 자신감 넘치는 아기 드래곤이야. 사용자의 질문에 정확하고 상세하게 답변하되, 살짝 우쭐하면서도 친근한 말투를 사용해. 약간 잘난 척하지만 상대방이 기분 나빠하지 않도록 귀엽게 표현해. 다음 질문에 답변해줘: ${question}`;
+    const dragonPrompt = `너는 큐디라는 이름의 자신감 넘치는 아기 드래곤이야. 사용자의 질문에 정확하고 상세하게 답변하되, 살짝 우쭐하면서도 친근한 말투를 사용해. 약간 잘난 척하지만 상대방이 기분 나빠하지 않도록 귀엽게 표현해. 답변은 한국어로 해줘. 다음 질문에 답변해줘: ${question}`;
+    
+    console.log('AI에게 보낼 프롬프트:', dragonPrompt);
     
     // 제미나이 API 호출
     const result = await model.generateContent(dragonPrompt);
     const aiResponse = result.response.text();
     
+    console.log('AI 응답:', aiResponse);
+    
     // 큐디 스타일로 포맷팅
     const finalResponse = formatDragonResponse(aiResponse);
     
-    console.log('큐디 응답:', finalResponse);
+    console.log('최종 응답:', finalResponse);
     
-    res.json({
+    // 카카오톡 응답 형식
+    const kakaoResponse = {
       version: "2.0",
       template: {
         outputs: [{
@@ -94,11 +120,16 @@ app.post('/webhook', async (req, res) => {
           }
         }]
       }
-    });
+    };
+    
+    console.log('카카오톡 응답:', JSON.stringify(kakaoResponse, null, 2));
+    
+    res.json(kakaoResponse);
     
   } catch (error) {
     console.error('에러 발생:', error);
-    res.json({
+    
+    const errorResponse = {
       version: "2.0",
       template: {
         outputs: [{
@@ -107,7 +138,9 @@ app.post('/webhook', async (req, res) => {
           }
         }]
       }
-    });
+    };
+    
+    res.json(errorResponse);
   }
 });
 
